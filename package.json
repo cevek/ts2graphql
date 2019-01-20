@@ -1,9 +1,13 @@
 {
     "name": "ts2graphql",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "",
     "main": "dist/index.js",
     "types": "dist/index",
+    "repository": {
+        "type": "github",
+        "url": "https://github.com/cevek/ts2graphql"
+    },
     "scripts": {},
     "keywords": [
         "typescript",
