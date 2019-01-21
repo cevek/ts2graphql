@@ -8,5 +8,5 @@
         "strict": true,
         "plugins": [{ "transform": "./index.ts" }]
     },
-    "exclude": ["node_modules", "example"]
+    "exclude": ["node_modules", "example", "dist"]
 }

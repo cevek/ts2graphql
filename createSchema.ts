@@ -1,35 +1,15 @@
-import {
-    GraphQLBoolean,
-    GraphQLFieldConfigArgumentMap,
-    GraphQLFieldConfigMap,
-    GraphQLFloat,
-    GraphQLID,
-    GraphQLInputObjectType,
-    GraphQLInputType,
-    GraphQLInt,
-    GraphQLList,
-    GraphQLNonNull,
-    GraphQLObjectType,
-    GraphQLOutputType,
-    GraphQLSchema,
-    GraphQLString,
-    GraphQLType,
-    GraphQLUnionType,
-    printSchema,
-    GraphQLScalarType,
-} from 'graphql';
+import { GraphQLBoolean, GraphQLFieldConfigArgumentMap, GraphQLFieldConfigMap, GraphQLFloat, GraphQLID, GraphQLInputObjectType, GraphQLInputType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLOutputType, GraphQLScalarType, GraphQLSchema, GraphQLString, GraphQLType, GraphQLUnionType } from 'graphql';
 import * as ts from 'typescript';
-import { inspect } from 'util';
-import { extractTypes } from './extractor';
-import { AllTypes, PrimitiveType, UnionType, InterfaceType } from './types';
 import { DateType } from './date';
+import { extractTypes } from './extractor';
+import { AllTypes, InterfaceType, PrimitiveType, UnionType } from './types';
 
 export function createSchema(fileName: string, options: { customScalars?: GraphQLScalarType[] } = {}) {
     const customScalarsMap = new Map<string, GraphQLScalarType>(
         [DateType, ...(options.customScalars || [])].map(it => [it.name, it] as [string, GraphQLScalarType])
     );
 
-    const program = ts.createProgram({ options: {}, rootNames: [fileName] });
+    const program = ts.createProgram({ options: { strict: true }, rootNames: [fileName] });
     const sourceFile = program.getSourceFile(fileName)!;
     const types = extractTypes(program)(sourceFile);
     const map = new Map<AllTypes, GraphQLType>();

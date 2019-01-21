@@ -110,7 +110,7 @@ export function extractTypes(program: ts.Program) {
                 type: getType(retType, rawType),
                 defaultValue: defaultValue,
                 args: paramsType ? paramsType.getProperties().map(createProp) : undefined,
-                optional: (symbol.flags & ts.SymbolFlags.Optional) > 0,
+                optional: (symbol.flags & ts.SymbolFlags.Optional) > 0 || retType.getNonNullableType() !== retType,
             };
         }
 
