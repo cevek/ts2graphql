@@ -103,7 +103,9 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
                 deprecationReason: undefined,
                 description: member.doc,
             };
-            obj[member.name] = memberType;
+            if (member.name !== '__typename') {
+                obj[member.name] = memberType;
+            }
             return obj;
         }, fields);
         return gqlType;
