@@ -5,7 +5,9 @@ export function extractTypes(program: ts.Program) {
     const types = new Map<ts.Type, AllTypes>();
     let id = 0;
     return (sourceFile: ts.SourceFile) => {
-        function getType(tsType: ts.Type, rawType?: string): AllTypes {
+        function getType(nullableTsType: ts.Type, rawType?: string): AllTypes {
+            const tsType = nullableTsType.getNonNullableType();
+
             let type = types.get(tsType);
             if (type) return type;
 
@@ -31,7 +33,6 @@ export function extractTypes(program: ts.Program) {
                 return type;
             }
 
-            tsType = tsType.getNonNullableType();
             if ((checker as any).isArrayLikeType(tsType)) {
                 const type: NativeType = {
                     kind: 'native',
