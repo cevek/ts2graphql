@@ -1,5 +1,6 @@
-import { ID, Int, Float, Default } from "../types";
-
+type ID = number;
+type Float = number;
+type Int = number;
 interface MainQuery {
     foo: Foo;
 }
@@ -36,12 +37,7 @@ interface Bar extends Foo {
 }
 
 interface Baz {
-    retInt(args: {
-        a?: Default<Int, 12>;
-        b?: Default<string, 'hi'>;
-        c?: Default<boolean, true>;
-        d: Default<boolean, false>;
-    }): Int;
+    retInt(args: { a?: Int; b?: string; c?: boolean; d: boolean }): Int;
     foo(args: {
         /** some doc */
         foo?: number;

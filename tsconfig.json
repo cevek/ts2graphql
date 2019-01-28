@@ -5,8 +5,6 @@
         "jsx": "react",
         "outDir": "dist",
         "declaration": true,
-        "strict": true,
-        "plugins": [{ "transform": "./index.ts" }]
-    },
-    "exclude": ["node_modules", "example", "dist"]
+        "strict": true
+    }
 }

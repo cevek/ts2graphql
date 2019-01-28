@@ -8,7 +8,10 @@
         "type": "github",
         "url": "https://github.com/cevek/ts2graphql"
     },
-    "scripts": {},
+    "scripts": {
+        "build": "tsc -p src",
+        "example": "npx ts-node example/index.ts"
+    },
     "keywords": [
         "typescript",
         "graphql",
@@ -23,6 +26,10 @@
         "@types/graphql": "^14.0.5",
         "@types/node": "^10.12.18",
         "graphql": ">14.0.0",
+        "ts-type-ast": "^1.0.5",
         "typescript": ">3.0.0"
+    },
+    "devDependencies": {
+        "ts-node": "^8.0.2"
     }
 }
