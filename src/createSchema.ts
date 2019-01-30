@@ -119,7 +119,7 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
             const memberType = {
                 type: nullable(member.optional, createGQL(member.type)) as GraphQLOutputType,
                 args: member.args
-                    ? member.args.reduce(
+                    ? (member.args[0].type as InterfaceLiteral).members.reduce(
                           (acc, arg) => {
                               acc[arg.name] = {
                                   description: arg.doc,
