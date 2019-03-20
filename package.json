@@ -1,6 +1,6 @@
 {
     "name": "ts2graphql",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "description": "",
     "main": "dist/index.js",
     "types": "dist/index",
@@ -10,7 +10,7 @@
     },
     "scripts": {
         "build": "tsc -p src",
-        "prepublish": "npm run build",
+        "prepublishOnly": "rm -rf dist && npm run build",
         "example": "npx ts-node example/index.ts"
     },
     "keywords": [
@@ -24,13 +24,16 @@
         "dist"
     ],
     "dependencies": {
-        "@types/graphql": "^14.0.5",
-        "@types/node": "^10.12.18",
-        "graphql": ">14.0.0",
-        "ts-type-ast": "^1.0.6",
-        "typescript": ">3.0.0"
+        "@types/graphql": ">=14.0.5",
+        "@types/node": ">=10.0.0",
+        "ts-type-ast": ">=1.0.6"
+    },
+    "peerDependencies": {
+        "typescript": ">3.3.0",
+        "graphql": ">14.0.0"
     },
     "devDependencies": {
+        "typescript": "3.4.0-rc",
         "ts-node": "^8.0.2"
     }
 }

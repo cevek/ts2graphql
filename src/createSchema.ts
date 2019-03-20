@@ -18,17 +18,22 @@ import {
     GraphQLUnionType,
 } from 'graphql';
 import * as ts from 'typescript';
-import { DateType } from './date';
-import { typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral } from 'ts-type-ast';
+import {DateType} from './date';
+import {typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral} from 'ts-type-ast';
 
-export function createSchema(fileName: string, options: { customScalars?: GraphQLScalarType[] } = {}) {
-    const customScalarsMap = new Map<string, GraphQLScalarType>(
-        [DateType, ...(options.customScalars || [])].map(it => [it.name, it] as [string, GraphQLScalarType])
-    );
+type CustomScalarFactory = (type: Primitive) => GraphQLScalarType | undefined;
+export function createSchema(
+    fileName: string,
+    options: {customScalars?: GraphQLScalarType[]; customScalarFactory?: CustomScalarFactory} = {},
+) {
+    const customScalarsMap = new Map<string, GraphQLScalarType>();
+    (options.customScalars || []).forEach(value => customScalarsMap.set(value.name, value));
+    const customScalar = options.customScalarFactory;
 
-    const program = ts.createProgram({ options: { strict: true }, rootNames: [fileName] });
+    const program = ts.createProgram({options: {strict: true}, rootNames: [fileName]});
     const checker = program.getTypeChecker();
     const sourceFile = program.getSourceFile(fileName)!;
+    //@ts-ignore
     const types = typeAST(checker, sourceFile);
     const map = new Map<AllTypes, GraphQLType>();
     let anonTypeIdx = 0;
@@ -76,7 +81,7 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
                 return new GraphQLList(add(type, nullable(false, createGQL(type.element))));
             case 'native':
                 if (type.name === 'Date') {
-                    return nonNull(customScalarsMap.get('Date'));
+                    return nonNull(DateType);
                 }
                 throw new Error('Unexpected type: ' + type.name);
             case 'primitive':
@@ -128,7 +133,7 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
                               };
                               return acc;
                           },
-                          {} as GraphQLFieldConfigArgumentMap
+                          {} as GraphQLFieldConfigArgumentMap,
                       )
                     : undefined,
                 // todo:
@@ -151,6 +156,12 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
     }
     function createGQLPrimitive(type: Primitive): GraphQLType {
         if (type.rawType === 'ID') return GraphQLID;
+        const customType = customScalarsMap.get(type.type);
+        if (customType) return customType;
+        if (customScalar) {
+            const res = customScalar(type);
+            if (res) return res;
+        }
         switch (type.type) {
             case 'number':
                 return type.rawType === 'Int' ? GraphQLInt : GraphQLFloat;
@@ -159,8 +170,6 @@ export function createSchema(fileName: string, options: { customScalars?: GraphQ
             case 'boolean':
                 return GraphQLBoolean;
         }
-        const customType = customScalarsMap.get(type.type);
-        if (customType) return customType;
         throw new Error('Unexpected type: ' + JSON.stringify(type));
     }
 }
