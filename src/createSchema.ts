@@ -91,7 +91,7 @@ export function createSchema(
     }
 
     function nullable(nullable: boolean, type: GraphQLType) {
-        return nullable ? type : new GraphQLNonNull(type);
+        return nullable || type instanceof GraphQLNonNull ? type : new GraphQLNonNull(type);
     }
 
     function createGQLType(type: Interface | InterfaceLiteral): GraphQLType {
