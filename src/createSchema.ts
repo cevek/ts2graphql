@@ -47,13 +47,16 @@ export function createSchema(
         let query!: GraphQLObjectType;
         let mutation: GraphQLObjectType | undefined;
         for (let i = 0; i < types.length; i++) {
-            const gqlType = createGQL(types[i], false);
-            if (gqlType instanceof GraphQLObjectType) {
-                if (gqlType.name.match(/Query$/)) {
-                    query = gqlType;
-                }
-                if (gqlType.name.match(/Mutation$/)) {
-                    mutation = gqlType;
+            const type = types[i];
+            if (type.kind === 'interface' && (type.name === 'Query' || type.name === 'Mutation')) {
+                const gqlType = createGQL(types[i], false);
+                if (gqlType instanceof GraphQLObjectType) {
+                    if (type.name === 'Query') {
+                        query = gqlType;
+                    }
+                    if (type.name === 'Mutation') {
+                        mutation = gqlType;
+                    }
                 }
             }
         }
