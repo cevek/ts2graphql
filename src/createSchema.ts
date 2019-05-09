@@ -16,10 +16,12 @@ import {
     GraphQLString,
     GraphQLType,
     GraphQLUnionType,
+    GraphQLError,
+    Kind,
 } from 'graphql';
 import * as ts from 'typescript';
 import {DateType} from './date';
-import {typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral} from 'ts-type-ast';
+import {typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral, UnionLiteral} from 'ts-type-ast';
 
 type CustomScalarFactory = (type: Primitive) => GraphQLScalarType | undefined;
 export function createSchema(
@@ -39,14 +41,13 @@ export function createSchema(
     let anonTypeIdx = 0;
 
     const schema = createSchemaFromTypes();
-    // console.log(printSchema(schema));
     return schema;
 
     function createSchemaFromTypes() {
         let query!: GraphQLObjectType;
         let mutation: GraphQLObjectType | undefined;
         for (let i = 0; i < types.length; i++) {
-            const gqlType = createGQL(types[i]);
+            const gqlType = createGQL(types[i], false);
             if (gqlType instanceof GraphQLObjectType) {
                 if (gqlType.name.match(/Query$/)) {
                     query = gqlType;
@@ -66,19 +67,21 @@ export function createSchema(
         map.set(type, gqltype);
         return gqltype;
     }
-    function createGQL(type: AllTypes): GraphQLType {
+    function createGQL(type: AllTypes, isInput: boolean): GraphQLType {
         const gqlType = map.get(type);
         if (gqlType) return gqlType;
         switch (type.kind) {
             case 'interface':
             case 'interfaceLiteral':
-                return createGQLType(type);
+                return createGQLType(type, isInput);
             // case 'enum':
             // return add(type, createGQLEnum(type));
             case 'union':
+            case 'unionLiteral':
+                if (isInput) return add(type, createGQLInputUnion(type));
                 return add(type, createGQLUnion(type));
             case 'array':
-                return new GraphQLList(add(type, nullable(false, createGQL(type.element))));
+                return new GraphQLList(add(type, nullable(false, createGQL(type.element, isInput))));
             case 'native':
                 if (type.name === 'Date') {
                     return nonNull(DateType);
@@ -94,16 +97,14 @@ export function createSchema(
         return nullable || type instanceof GraphQLNonNull ? type : new GraphQLNonNull(type);
     }
 
-    function createGQLType(type: Interface | InterfaceLiteral): GraphQLType {
+    function createGQLType(type: Interface | InterfaceLiteral, isInput: boolean): GraphQLType {
         let typeName = type.kind === 'interface' ? type.name : '';
-        const isInput = typeName && typeName.match(/Input$/);
         const Class = isInput ? (GraphQLInputObjectType as typeof GraphQLObjectType) : GraphQLObjectType;
 
         const fields = {} as GraphQLFieldConfigMap<{}, {}>;
         if (type.kind === 'interfaceLiteral') {
             for (let i = 0; i < type.members.length; i++) {
                 const member = type.members[i];
-                // console.log(member.name, member.type);
                 if (
                     member.name === '__typename' &&
                     member.type.kind === 'primitive' &&
@@ -113,7 +114,7 @@ export function createSchema(
                 }
             }
         }
-        if (typeName === '') typeName = 'Anonymous' + ++anonTypeIdx;
+        if (typeName === '') typeName = 'Anonymous' + (isInput ? 'Input' : '') + ++anonTypeIdx;
         const gqlType = new Class({
             name: typeName,
             description: type.kind === 'interface' ? type.doc : undefined,
@@ -121,21 +122,23 @@ export function createSchema(
         });
         add(type, gqlType);
         type.members.reduce((obj, member) => {
+            if (member.orUndefined) throw new Error('Undefined props are not supported in graphql');
             const memberType = {
-                type: nullable(member.optional, createGQL(member.type)) as GraphQLOutputType,
-                args: member.args
-                    ? (member.args[0].type as InterfaceLiteral).members.reduce(
-                          (acc, arg) => {
-                              acc[arg.name] = {
-                                  description: arg.doc,
-                                  defaultValue: undefined,
-                                  type: nullable(arg.optional, createGQL(arg.type)) as GraphQLInputType,
-                              };
-                              return acc;
-                          },
-                          {} as GraphQLFieldConfigArgumentMap,
-                      )
-                    : undefined,
+                type: nullable(member.orNull, createGQL(member.type, false)) as GraphQLOutputType,
+                args:
+                    member.args && member.args.length === 1
+                        ? (member.args[0].type as InterfaceLiteral).members.reduce(
+                              (acc, arg) => {
+                                  acc[arg.name] = {
+                                      description: arg.doc,
+                                      defaultValue: undefined,
+                                      type: nullable(arg.orNull, createGQL(arg.type, true)) as GraphQLInputType,
+                                  };
+                                  return acc;
+                              },
+                              {} as GraphQLFieldConfigArgumentMap,
+                          )
+                        : undefined,
                 // todo:
                 deprecationReason: undefined,
                 description: member.doc,
@@ -147,11 +150,33 @@ export function createSchema(
         }, fields);
         return gqlType;
     }
-    function createGQLUnion(type: Union): GraphQLType {
+    function createGQLUnion(type: Union | UnionLiteral): GraphQLType {
         return new GraphQLUnionType({
-            name: type.name,
-            description: type.doc,
-            types: type.members.map(member => createGQL(member) as GraphQLObjectType),
+            name: type.kind === 'union' ? type.name : 'AnonymousUnion' + ++anonTypeIdx,
+            description: type.kind === 'union' ? type.doc : undefined,
+            types: type.members.map(member => createGQL(member, false) as GraphQLObjectType),
+        });
+    }
+    function createGQLInputUnion(type: Union | UnionLiteral): GraphQLType {
+        if (!type.members.every(m => m.kind === 'primitive' && m.type === 'string'))
+            throw new Error('Input union supports only string unions');
+        const union = type.members.map(m => m.kind === 'primitive' && m.literal);
+        const validate = (val: string) => {
+            if (!union.includes(val))
+                throw new GraphQLError(`Input union: "${union.join(' | ')}" doesn't have value: ${val}`);
+            return val;
+        };
+        return new GraphQLScalarType({
+            name: type.kind === 'union' ? type.name : union.map(u => String(u).replace(/[^a-z]+/gi, '_')).join('__'),
+            description: type.kind === 'union' ? type.doc : undefined,
+            serialize: validate,
+            parseValue: validate,
+            parseLiteral(ast) {
+                if (ast.kind === Kind.STRING) {
+                    return validate(ast.value);
+                }
+                return null;
+            },
         });
     }
     function createGQLPrimitive(type: Primitive): GraphQLType {
