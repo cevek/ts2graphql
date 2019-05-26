@@ -82,6 +82,10 @@ export function createSchema(
             case 'union':
             case 'unionLiteral':
                 if (isInput) return add(type, createGQLInputUnion(type));
+                else if (type.members.every(member => member.kind === 'primitive' && member.type === 'string')) return GraphQLString;
+                else if (type.members.every(member => member.kind === 'primitive' && member.type === 'number' && member.rawType === 'Int')) return GraphQLInt;
+                else if (type.members.every(member => member.kind === 'primitive' && member.type === 'number')) return GraphQLFloat;
+                else if (type.members.every(member => member.kind === 'primitive')) throw new Error('Union primitives are not supported');
                 return add(type, createGQLUnion(type));
             case 'array':
                 return new GraphQLList(add(type, nullable(false, createGQL(type.element, isInput))));
