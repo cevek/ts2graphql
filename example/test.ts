@@ -43,3 +43,7 @@ interface Baz {
         foo?: number;
     }): Bar;
 }
+
+interface Query {
+    mainQuery: MainQuery;
+}

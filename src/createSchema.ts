@@ -60,6 +60,7 @@ export function createSchema(
                 }
             }
         }
+        if (!(query||mutation)) throw new Error("No 'Query' or 'Mutation' type found");
         return new GraphQLSchema({
             query: query,
             mutation: mutation,
@@ -106,7 +107,7 @@ export function createSchema(
 
     function createGQLType(type: Interface | InterfaceLiteral, isInput: boolean): GraphQLType {
         let typeName = type.kind === 'interface' ? type.name : '';
-        const Class = isInput ? (GraphQLInputObjectType as typeof GraphQLObjectType) : GraphQLObjectType;
+        const Class = isInput ? (GraphQLInputObjectType as unknown as typeof GraphQLObjectType) : GraphQLObjectType;
 
         const fields = {} as GraphQLFieldConfigMap<{}, {}>;
         if (type.kind === 'interfaceLiteral') {
@@ -129,9 +130,9 @@ export function createSchema(
         });
         add(type, gqlType);
         type.members.reduce((obj, member) => {
-            if (member.orUndefined) throw new Error('Undefined props are not supported in graphql');
+            // if (member.orUndefined) throw new Error('Undefined props are not supported in graphql');
             const memberType = {
-                type: nullable(member.orNull, createGQL(member.type, false)) as GraphQLOutputType,
+                type: nullable(member.orNull||member.orUndefined, createGQL(member.type, false)) as GraphQLOutputType,
                 args:
                     member.args && member.args.length === 1
                         ? (member.args[0].type as InterfaceLiteral).members.reduce(
