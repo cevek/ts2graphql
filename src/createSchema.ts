@@ -1,5 +1,6 @@
 import {
     GraphQLBoolean,
+    GraphQLEnumType,
     GraphQLFieldConfigArgumentMap,
     GraphQLFieldConfigMap,
     GraphQLFloat,
@@ -18,10 +19,11 @@ import {
     GraphQLUnionType,
     GraphQLError,
     Kind,
+    ValueNode,
 } from 'graphql';
 import * as ts from 'typescript';
 import {DateType} from './date';
-import {typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral, UnionLiteral} from 'ts-type-ast';
+import {typeAST, AllTypes, Interface, Primitive, Union, InterfaceLiteral, UnionLiteral, Enum} from 'ts-type-ast';
 
 type CustomScalarFactory = (type: Primitive) => GraphQLScalarType | undefined;
 export function createSchema(
@@ -78,8 +80,8 @@ export function createSchema(
             case 'interface':
             case 'interfaceLiteral':
                 return createGQLType(type, isInput);
-            // case 'enum':
-            // return add(type, createGQLEnum(type));
+            case 'enum':
+                return add(type, createGQLEnum(type));
             case 'union':
             case 'unionLiteral':
                 if (isInput) return add(type, createGQLInputUnion(type));
@@ -179,7 +181,7 @@ export function createSchema(
             description: type.kind === 'union' ? type.doc : undefined,
             serialize: validate,
             parseValue: validate,
-            parseLiteral(ast) {
+            parseLiteral(ast: ValueNode) {
                 if (ast.kind === Kind.STRING) {
                     return validate(ast.value);
                 }
@@ -204,6 +206,28 @@ export function createSchema(
                 return GraphQLBoolean;
         }
         throw new Error('Unexpected type: ' + JSON.stringify(type));
+    }
+
+    function createGQLEnum(type: Enum) {
+        const values = type.types.reduce((acc, item, index) => {
+            if (item.kind !== "primitive") {
+                throw new Error(`Only string enum values are supported: ${JSON.stringify(type)}`)
+            }
+            else {
+                if (item.type !== "string") {
+                    throw new Error(`Only string enum values are supported: ${JSON.stringify(type)}`)
+                }
+                else {
+                    acc[item.literal] = {value: index}
+                }
+            }
+            return acc;
+        }, {} as GraphQLEnumType["values"])
+
+        return new GraphQLEnumType({
+            name: type.name,
+            values
+        })
     }
 }
 
