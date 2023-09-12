@@ -2,14 +2,20 @@ import {GraphQLScalarType, Kind, GraphQLError} from 'graphql';
 
 export const DateType = new GraphQLScalarType({
     name: 'Date',
-    serialize: date => {
-        if (Number.isNaN(date.getTime())) {
-            throw new Error('Invalid response date');
+    serialize: (date) => {
+        if (!(date instanceof Date)) {
+            throw new Error("Date object expected")
         }
-        return date.toJSON();
+        else {
+            if (Number.isNaN(date.getTime())) {
+                throw new Error('Invalid response date');
+            }
+            return date.toJSON();
+        }
     },
     parseValue: val => {
-        return parse(val);
+        if (typeof val === "string") return parse(val);
+        else throw new Error("String value expected.")
     },
     parseLiteral(ast) {
         if (ast.kind === Kind.STRING) {

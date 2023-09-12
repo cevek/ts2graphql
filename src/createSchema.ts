@@ -18,6 +18,7 @@ import {
     GraphQLUnionType,
     GraphQLError,
     Kind,
+    ValueNode,
 } from 'graphql';
 import * as ts from 'typescript';
 import {DateType} from './date';
@@ -169,8 +170,8 @@ export function createSchema(
         if (!type.members.every(m => m.kind === 'primitive' && m.type === 'string'))
             throw new Error('Input union supports only string unions');
         const union = type.members.map(m => m.kind === 'primitive' && m.literal);
-        const validate = (val: string) => {
-            if (!union.includes(val))
+        const validate = (val: unknown) => {
+            if (typeof val !== "string" || !union.includes(val))
                 throw new GraphQLError(`Input union: "${union.join(' | ')}" doesn't have value: ${val}`);
             return val;
         };
@@ -179,11 +180,10 @@ export function createSchema(
             description: type.kind === 'union' ? type.doc : undefined,
             serialize: validate,
             parseValue: validate,
-            parseLiteral(ast) {
+            parseLiteral(ast: ValueNode) {
                 if (ast.kind === Kind.STRING) {
                     return validate(ast.value);
                 }
-                return null;
             },
         });
     }
