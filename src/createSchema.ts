@@ -1,6 +1,7 @@
 import {
     GraphQLBoolean,
     GraphQLEnumType,
+    GraphQLEnumTypeConfig,
     GraphQLFieldConfigArgumentMap,
     GraphQLFieldConfigMap,
     GraphQLFloat,
@@ -222,7 +223,7 @@ export function createSchema(
                 }
             }
             return acc;
-        }, {} as GraphQLEnumType["values"])
+        }, {} as GraphQLEnumTypeConfig["values"])
 
         return new GraphQLEnumType({
             name: type.name,
