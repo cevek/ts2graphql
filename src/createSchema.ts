@@ -218,9 +218,7 @@ export function createSchema(
                 if (item.type !== "string") {
                     throw new Error(`Only string enum values are supported: ${JSON.stringify(type)}`)
                 }
-                else {
-                    acc[item.literal] = {value: index}
-                }
+                acc[item.literal as string] = {value: index}
             }
             return acc;
         }, {} as GraphQLEnumTypeConfig["values"])
